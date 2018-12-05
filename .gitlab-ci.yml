@@ -1,0 +1,114 @@
+---
+# image: docker:stable
+
+services:
+  - name: docker:dind
+    command: ["--registry-mirror=https://dockerhub-mirror0.artifactory.asynchrony.com"]
+
+variables:
+  FULL_PROJECT_PATH: gitlab.asynchrony.com/$CI_PROJECT_PATH
+
+stages:
+  - build
+  - test
+  - deploy
+
+before_script:
+  - docker info
+  - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+
+build:
+  tags:
+    - dind
+  stage: build
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHA -t $CI_REGISTRY_IMAGE:latest .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest
+
+    # If we wanted run cp to retrieve binary
+    - docker run --name boop $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHA whoami
+    - docker cp boop:/app $CI_PROJECT_DIR/$CI_PROJECT_NAME
+    - ls -la $CI_PROJECT_DIR
+
+  artifacts:
+    paths:
+      - $CI_PROJECT_NAME
+
+# test_somethin:
+#   tags:
+#     - dind
+#   stage: test
+#   script:
+#     - echo "This is a test!"
+
+# deploy_dev:
+#   tags:
+#     - dind
+#   stage: deploy
+#   script:
+#     - echo "Deploy to Dev!"
+#     - | 
+#       docker run --rm -v $CI_PROJECT_DIR/charts:/apps \
+#         $CI_REGISTRY_IMAGE/helm-override:0.0.1 \
+#         upgrade -i --namespace adamsbra-example-$CI_ENVIRONMENT_NAME --debug \
+#         --set image.tag=$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHA,ingress.name=$CI_ENVIRONMENT_NAME-$CI_COMMIT_REF_SLUG,ingress.basedomain=adamsbra-example-$CI_ENVIRONMENT_NAME.svc.cluster.local \
+#         $CI_ENVIRONMENT_NAME-$CI_COMMIT_REF_SLUG /apps/
+#   environment:
+#     name: dev
+#     url: http://$CI_ENVIRONMENT_NAME-$CI_COMMIT_REF_SLUG.adamsbra-example-$CI_ENVIRONMENT_NAME.svc.cluster.local
+#   only:
+#     - branches
+#   except:
+#     - master
+
+# deploy_qa:
+#   tags:
+#     - dind
+#   stage: deploy
+#   script:
+#     - echo "Deploy to QA"
+#     - | 
+#       docker run --rm -v $CI_PROJECT_DIR/charts:/apps \
+#         $CI_REGISTRY_IMAGE/helm-override:0.0.1 \
+#         upgrade -i --namespace adamsbra-example-$CI_ENVIRONMENT_NAME --debug \
+#         --set image.tag=$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHA,ingress.name=$CI_ENVIRONMENT_NAME-$CI_COMMIT_REF_SLUG,ingress.basedomain=adamsbra-example-$CI_ENVIRONMENT_NAME.svc.cluster.local \
+#         $CI_ENVIRONMENT_NAME-$CI_COMMIT_REF_SLUG /apps/
+#   environment:
+#     name: qa
+#     url: http://$CI_ENVIRONMENT_NAME-$CI_COMMIT_REF_SLUG.adamsbra-example-$CI_ENVIRONMENT_NAME.svc.cluster.local
+#   when: manual
+#   except:
+#     - master
+#   allow_failure: false
+
+# deploy_integration:
+#   tags:
+#     - dind
+#   stage: deploy
+#   script:
+#     - echo "Deploy to Integration"
+#     - | 
+#       docker run --rm -v $CI_PROJECT_DIR/charts:/apps \
+#         $CI_REGISTRY_IMAGE/helm-override:0.0.1 \
+#         upgrade -i --namespace adamsbra-example-qa --debug \
+#         --set image.tag=$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHA,ingress.name=$CI_ENVIRONMENT_NAME-$CI_COMMIT_REF_SLUG,ingress.basedomain=adamsbra-example-$CI_ENVIRONMENT_NAME.svc.cluster.local \
+#         $CI_ENVIRONMENT_NAME-$CI_COMMIT_REF_SLUG /apps/
+#   environment:
+#     name: integration
+#     url: http://$CI_ENVIRONMENT_NAME-$CI_COMMIT_REF_SLUG.adamsbra-example-$CI_ENVIRONMENT_NAME.svc.cluster.local
+#   only:
+#   - master
+
+# deploy_prod:
+#   tags:
+#     - dind
+#   stage: deploy
+#   script:
+#     - echo "Deploy to Prod"
+#   environment:
+#     name: prod
+#     url: http://adamsbra-example-$CI_ENVIRONMENT_NAME.svc.cluster.local
+#   when: manual
+#   only:
+#   - master

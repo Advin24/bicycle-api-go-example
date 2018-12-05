@@ -1,0 +1,88 @@
+---
+image: golang:alpine
+
+variables:
+  GO111MODULE: "on"
+  CGO_ENABLED: 1
+  GOOS: "linux"
+  FULL_PROJECT_PATH: gitlab.asynchrony.com/$CI_PROJECT_PATH
+
+# cache:
+#   paths:
+#     - /go/src/github.com
+#     - /go/src/golang.org
+#     - /go/src/google.golang.org
+#     - /go/src/gopkg.in
+
+stages:
+  - test
+  - build
+
+before_script:
+  - apk update && apk upgrade && apk add --no-cache git gcc musl-dev
+
+unit_tests:
+  tags:
+    - docker
+  stage: test
+  script:
+    - go test -short $(go list $FULL_PROJECT_PATH/... | grep -v /vendor/)
+
+# race_detector:
+#   tags:
+#     - docker
+#   stage: test
+#   script:
+#     - go test -race -short $(go list $FULL_PROJECT_PATH/... | grep -v /vendor/)
+
+# memory_sanitizer:
+#   tags:
+#     - docker
+#   stage: test
+#   script:
+#     - go test -msan -short $(go list $FULL_PROJECT_PATH/... | grep -v /vendor/)
+
+# code_coverage:
+#   tags:
+#     - docker
+#   stage: test
+#   script:
+#     - for package in $(go list ./... | grep -v /vendor/); do
+#         go test -covermode=count -coverprofile "cover/${package##*/}.cov" "$package" ;
+#       done
+#     - tail -q -n +2 cover/*.cov >> cover/coverage.cov
+#     - go tool cover -func=cover/coverage.cov
+
+# code_coverage_report:
+#   tags:
+#     - docker
+#   stage: test
+#   script:
+#     - for package in $(go list ./... | grep -v /vendor/); do
+#           go test -covermode=count -coverprofile "cover/${package##*/}.cov" "$package" ;
+#         done
+#     - tail -q -n +2 cover/*.cov >> cover/coverage.cov
+#     - go tool cover -html=cover/coverage.cov -o coverage.html
+#   only:
+#   - master
+
+lint_code:
+  tags:
+    - docker
+  stage: test
+  before_script:
+    - apk update && apk upgrade && apk add --no-cache git gcc musl-dev
+    - go get -u github.com/golang/lint/golint
+  script:
+    - golint -set_exit_status $(go list $FULL_PROJECT_PATH/... | grep -v /vendor/)
+
+build:
+  tags:
+    - docker
+  stage: build
+  script:
+    - go build -a -installsuffix cgo -o $CI_PROJECT_DIR/$CI_PROJECT_NAME
+
+  artifacts:
+    paths:
+      - $CI_PROJECT_NAME

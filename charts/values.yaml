@@ -1,0 +1,32 @@
+# Default values for golang.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+metadata:
+  labels:
+    beep: beep
+    boop: boop
+    iam: "a-computer"
+
+replicaCount: 1
+image:
+  pullPolicy: IfNotPresent
+  repository: registry-gitlab.asynchrony.com/brandon.adams/bicycle-api-go
+  tag: 68eeb45ee34f0890752333f8c966f34b68ec2196
+  secret: regcred
+service:
+  name: golang
+  type: ClusterIP
+  externalPort: 80
+  internalPort: 8000
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+ingress:
+  enabled: true
+  name: thisisasample
+  basedomain: adamsbra-example-dev.svc.cluster.local

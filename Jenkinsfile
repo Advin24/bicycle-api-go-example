@@ -5,7 +5,11 @@ podTemplate(){
                 sh "docker -v" 
                 sh "docker info" 
             }
+            stage('Clone Code') {
+                git branch: "$BRANCH_NAME", credentialsId: 'github', url: "https://github.com/Advin24/${JOB_BASE_NAME}.git"
+            }
             stage('Build My Docker Image') {
+
                 sh "ls -la" 
                 sh "cat Dockerfile" 
 
